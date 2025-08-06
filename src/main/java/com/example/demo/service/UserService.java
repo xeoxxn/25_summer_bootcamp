@@ -4,6 +4,7 @@ import com.example.demo.dto.request.UserJoinRequest;
 import com.example.demo.dto.request.UserLoginRequest;
 import com.example.demo.dto.response.UserJoinResponse;
 import com.example.demo.dto.response.UserLoginResponse;
+import com.example.demo.entity.Role;
 import com.example.demo.entity.User;
 import com.example.demo.jwt.JwtUtil;
 import com.example.demo.repository.UserRepository;
@@ -32,6 +33,7 @@ public class UserService {
                 .password(request.getPassword())
                 .name(request.getName())
                 .address(request.getAddress())
+                .role(Role.USER) // 기본 권한 부여
                 .build();
         // [3] DB에 저장
         userRepository.save(user);
@@ -57,7 +59,7 @@ public class UserService {
 
         //[3] JWT 토큰 생성
         // jwtUtil.createToken() 메서드를 통해 사용자 ID 기반의 토큰을 만듦
-        String token = jwtUtil.createToken(user.getUserId());
+        String token = jwtUtil.createToken(user.getUserId(), user.getRole());
 
         // [4] 로그인 응답 객체 생성 후 반환
         return new UserLoginResponse(token);

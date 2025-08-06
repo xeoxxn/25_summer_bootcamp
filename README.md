@@ -1,5 +1,43 @@
 # 여름방학 부트캠프 (백엔드)
 
+## 구조 설명
+```text
+src
+└── main
+    ├── java
+    │   └── com.example.demo
+    │       ├── config
+    │       │   └── SecurityConfig.java           # Spring Security 설정
+    │       │
+            │       ├── controller
+    │       │   └── UserController.java           # 회원가입, 로그인 API 컨트롤러
+    │       │
+            │       ├── dto
+    │       │   ├── request
+    │       │   │   ├── UserJoinRequest.java      # 회원가입 요청 DTO
+    │       │   │   └── UserLoginRequest.java     # 로그인 요청 DTO
+    │       │   │
+            │       │   └── response
+    │       │       ├── UserJoinResponse.java     # 회원가입 응답 DTO
+    │       │       └── UserLoginResponse.java    # 로그인 응답 DTO
+    │       │
+            │       ├── entity
+    │       │   ├── User.java                     # User 엔티티 (@Entity)
+    │       │   └── Role.java                     # Role 열거형 (enum)
+    │       │
+            │       ├── jwt
+    │       │   └── JwtUtil.java                  # JWT 생성/검증 유틸리티 클래스
+    │       │
+            │       ├── repository
+    │       │   └── UserRepository.java           # JPA 레포지토리
+    │       │
+            │       └── service
+    │           └── UserService.java              # 회원가입/로그인 로직 서비스
+    │
+            └── resources
+        ├── application.properties                # DB 설정, JWT 시크릿 등 설정 파일
+        └── static / templates (필요 시)
+```
 ## 과제 1. 로그인 & 회원가입 기능 구현하기
 
 ### 단계 요약
@@ -153,5 +191,94 @@ public class JwtUtil {
             .signWith(Keys.hmacShaKeyFor(secret.getBytes()), SignatureAlgorithm.HS256)
             .compact();
     }
+}
+```
+
+# 과제 2 : 역할 기반 권한 제어 (RBAC)
+
+### 1. User 엔티티에 역할 필드 추가
+1-1. Role 파일 추가
+```java
+public enum Role {
+    USER, ADMIN
+}
+```
+1-2. User Entity에 사용자 권한 추가
+```java
+@Entity
+public class User {
+    // ...기존 필드들...
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role; // 사용자 권한 (USER / ADMIN)
+}
+```
+
+### 2. 회원가입 시 기본 권한 설정
+```java
+User user = User.builder()
+    .userId(request.getUserId())
+    .password(request.getPassword())
+    .name(request.getName())
+    .address(request.getAddress())
+    .role(Role.USER) // 기본 권한 부여
+    .build();
+```
+
+### 3. JWT에 역할 정보 명시
+```java
+public String createToken(String userId, Role role) {
+    return Jwts.builder()
+            // claim과 subject는 하나만 있어도 되지만 sub는 인증/인가용으로 의미 있게 쓰이기 때문에 둘 다 써도 괜찮다.
+            .claim("userId", userId) // payload에 userId 넣음
+            .claim("role", role.name()) // payload에 role 넣음 (문자열로 변환)
+            .setSubject(userId) // subject는 일반적으로 고유 식별자용
+            .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
+            .signWith(key)
+            .compact();
+}
+```
+
+### 4. Spring Security 설정
+```text
+src/main/java/com/example/demo/config/SecurityConfig.java
+```
+```java
+package com.example.demo.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+
+@Configuration
+@EnableWebSecurity // 웹 보안 설정을 활성화
+@EnableMethodSecurity(prePostEnabled = true) // @PreAuthorize, @PostAuthorize 활성화
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(csrf -> csrf.disable()) // CSRF 비활성화 (테스트용)
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/users/join", "/api/users/login").permitAll() // 회원가입/로그인은 모두 허용
+                .requestMatchers("/admin/**").hasRole("ADMIN") // /admin으로 시작하는 건 ADMIN만 접근
+                .anyRequest().authenticated() // 나머지는 인증된 사용자만
+            );
+
+        return http.build();
+    }
+}
+```
+
+### 5. UserController에서 권한별 분기 처리
+```java
+@GetMapping("/admin/dashboard")
+@PreAuthorize("hasRole('ADMIN')")
+public String adminOnlyPage() {
+    return "접근 성공!";
 }
 ```

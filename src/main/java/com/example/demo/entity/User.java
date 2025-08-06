@@ -26,4 +26,8 @@ public class User {
 
     private String name; // 이름 (null 허용)
     private String address; // 주소 (null 허용)
+
+    @Enumerated(EnumType.STRING) // enum을 문자열로 DB에 저장
+    @Column(nullable = false)
+    private Role role; // USER 또는 ADMIN
 }

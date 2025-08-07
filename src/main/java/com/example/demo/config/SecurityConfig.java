@@ -6,6 +6,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
@@ -16,11 +17,12 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(AbstractHttpConfigurer::disable) // CSRF 비활성화 (테스트용) - 공격 방식 (테스트용이라 보호 비활성화)
+                .csrf(csrf -> csrf.disable()) // CSRF 비활성화 (테스트용) - 공격 방식 (테스트용이라 보호 비활성화)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/users/join", "api/user/login").permitAll() // 회원가입 / 로그인은 모두 허용
+                        .requestMatchers("/", "/api/users/join", "/api/users/login").permitAll() // 회원가입 / 로그인은 모두 허용
                         .requestMatchers("/admin/**").hasRole("ADMIN") // /admin으로 시작하는 건 ADMIN만 접근 가능하도록
-                        .anyRequest().authenticated() // 나머지는 인증된 사용자만 접근 허용
+                        .anyRequest().authenticated() // 나머지는 인증된 사용자만 접근
                 );
         return http.build();
     }

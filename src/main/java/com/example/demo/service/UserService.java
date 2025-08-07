@@ -7,6 +7,7 @@ import com.example.demo.dto.response.UserLoginResponse;
 import com.example.demo.entity.Role;
 import com.example.demo.entity.User;
 import com.example.demo.jwt.JwtUtil;
+import com.example.demo.kafka.UserKafkaProducer;
 import com.example.demo.repository.UserRepository;
 import io.jsonwebtoken.Jwts;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class UserService {
     private final UserRepository userRepository; // DB와 통신하기 위한 JPA 인터페이스
     private final JwtUtil jwtUtil; // JWT 토큰을 생성 / 검증하기 위한 유틸 클래스
     // private final PasswordEncoder passwordEncoder; // 비밀번호 암호화
+    private final UserKafkaProducer userKafkaProducer;
 
     public UserJoinResponse register(UserJoinRequest request) {
         // [1] userId 중복 확인
@@ -37,6 +39,9 @@ public class UserService {
                 .build();
         // [3] DB에 저장
         userRepository.save(user);
+
+        // Kafka 이벤트 전송
+        userKafkaProducer.sendUserCreateMessage("New user registered: " + user.getUserId());
 
         // [4] 저장된 유저 정보를 응답 DTO로 반환
         return new UserJoinResponse(

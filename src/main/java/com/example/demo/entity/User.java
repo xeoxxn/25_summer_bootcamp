@@ -4,6 +4,7 @@ import jakarta.persistence.*; // JPA 관련 어노테이션을 사용하기 위�
 import lombok.*; // Lombok으로 생성자, getter/ setter 등을 자동 생성
 // Entity : 이 클래스가 JPA의 엔티티임을 나타냄. 데이터베이스 테이블에 매핑됨
 @Entity
+@Table(name = "users")
 // Lombok 어노테이션들
 @Getter @Setter // 모든 필드에 대한 getter/setter 생성
 // 둘 다 생성자를 자동으로 생성

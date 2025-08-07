@@ -11,6 +11,7 @@ import com.example.demo.kafka.UserKafkaProducer;
 import com.example.demo.repository.UserRepository;
 import io.jsonwebtoken.Jwts;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
@@ -20,14 +21,16 @@ import java.util.Date;
 public class UserService {
     private final UserRepository userRepository; // DB와 통신하기 위한 JPA 인터페이스
     private final JwtUtil jwtUtil; // JWT 토큰을 생성 / 검증하기 위한 유틸 클래스
-    // private final PasswordEncoder passwordEncoder; // 비밀번호 암호화
     private final UserKafkaProducer userKafkaProducer;
+    private final PasswordEncoder passwordEncoder;
 
     public UserJoinResponse register(UserJoinRequest request) {
         // [1] userId 중복 확인
         if (userRepository.existsByUserId(request.getUserId())) {
             throw new IllegalArgumentException("이미 존재하는 아이디입니다.");
         }
+        // 비밀번호 암호화
+        String encodedPassword = passwordEncoder.encode(request.getPassword());
 
         // [2] User 엔티티 객체 생성 (Builder 패턴)
         User user = User.builder()
@@ -57,11 +60,9 @@ public class UserService {
         User user = userRepository.findByUserId(request.getUserId())
                 .orElseThrow(()-> new IllegalArgumentException("아이디가 존재하지 않습니다."));
 
-        // [2] 비밀번호 일치 여부 확인
-        if (!user.getPassword().equals(request.getPassword())) {
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new IllegalArgumentException("비밀번호가 틀렸습니다.");
         }
-
         //[3] JWT 토큰 생성
         // jwtUtil.createToken() 메서드를 통해 사용자 ID 기반의 토큰을 만듦
         String token = jwtUtil.createToken(user.getUserId(), user.getRole());

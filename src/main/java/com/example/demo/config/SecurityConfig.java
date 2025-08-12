@@ -41,18 +41,9 @@ public class SecurityConfig { // 애플리케이션 시작 시 단 한 번 실�
                         org.springframework.security.config.http.SessionCreationPolicy.STATELESS))
                 // 요청별 인증 및 접근 권한 설정
                 .authorizeHttpRequests(auth -> auth
-                        // 인증 없이 접근 허용
-                        .requestMatchers(HttpMethod.POST, "/api/users/join").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/users/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/users/join", "/api/users/login").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
-                        .requestMatchers("/api/test/public").permitAll()
-
-                        // 역할에 따른 접근 제어
-                        .requestMatchers("/api/test/admin").hasRole("ADMIN")
-                        .requestMatchers("/api/test/user").hasAnyRole("USER", "ADMIN")
-
-                        // 그 외 모든 요청은 인증 필요
-                        .anyRequest().authenticated()
+                        .anyRequest().authenticated() // 그 외 모든 요청은 인증만 요구, 역할 판단은 메서드에서
                 )
                 // 인증이 필요한 요청에 대해 JwtFilter가 먼저 실행되도록 필터 체인 구성
                 .addFilterBefore(new JwtFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class)

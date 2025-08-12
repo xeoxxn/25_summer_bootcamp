@@ -24,12 +24,6 @@ public class JwtFilter extends OncePerRequestFilter { // 매 요청마다 JWT �
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        // 회원가입, 로그인, h2-console 경로는 필터 제외
-        String uri = request.getRequestURI();
-        if (uri.startsWith("/api/users/join") || uri.startsWith("/api/users/login") || uri.startsWith("/h2-console")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
 
         // 토큰이 없거나 형식이 맞지 않으면 통과
         String authHeader = request.getHeader("Authorization");

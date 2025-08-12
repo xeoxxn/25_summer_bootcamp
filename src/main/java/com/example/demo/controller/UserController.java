@@ -26,7 +26,7 @@ public class UserController {
     // 로그인 API
     @PostMapping("/login")
     public ResponseEntity<UserLoginResponse> login(@RequestBody UserLoginRequest request) {
-        UserLoginResponse response = userService.login(request);
-        return ResponseEntity.ok(response); // HTTP 200 OK
+        String token = userService.login(request.getUserId(), request.getPassword());
+        return ResponseEntity.ok(new UserLoginResponse(token));
     }
 }

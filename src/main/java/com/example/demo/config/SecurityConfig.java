@@ -1,36 +1,65 @@
 package com.example.demo.config;
 
+import com.example.demo.filter.JwtFilter;
+import com.example.demo.jwt.JwtUtil;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
-@EnableWebSecurity // 웹 보안 설정을 활성화
-@EnableMethodSecurity(prePostEnabled = true) // @PreAuthorize(메서드 실행 전 검사), @PostAuthorize(메서드 실행 후 검사) 활성화
-public class SecurityConfig {
+public class SecurityConfig { // 애플리케이션 시작 시 단 한 번 실행
+
+    private final JwtUtil jwtUtil;
+
+    public SecurityConfig(JwtUtil jwtUtil) {
+        this.jwtUtil = jwtUtil;
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(); // 암호화 알고리즘: BCrypt
+        return new BCryptPasswordEncoder(); // BCrypt 방식 사용
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable()) // CSRF 비활성화 (테스트용) - 공격 방식 (테스트용이라 보호 비활성화)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(
+                        org.springframework.security.config.http.SessionCreationPolicy.STATELESS))
+                // 요청별 인증 및 접근 권한 설정
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/api/users/join", "/api/users/login").permitAll() // 회원가입 / 로그인은 모두 허용
-                        .requestMatchers("/admin/**").hasRole("ADMIN") // /admin으로 시작하는 건 ADMIN만 접근 가능하도록
-                        .anyRequest().authenticated() // 나머지는 인증된 사용자만 접근
+                        // 인증 없이 접근 허용
+                        .requestMatchers(HttpMethod.POST, "/api/users/join").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/users/login").permitAll()
+                        .requestMatchers("/h2-console/**").permitAll()
+                        .requestMatchers("/api/test/public").permitAll()
+
+                        // 역할에 따른 접근 제어
+                        .requestMatchers("/api/test/admin").hasRole("ADMIN")
+                        .requestMatchers("/api/test/user").hasAnyRole("USER", "ADMIN")
+
+                        // 그 외 모든 요청은 인증 필요
+                        .anyRequest().authenticated()
+                )
+                // 인증이 필요한 요청에 대해 JwtFilter가 먼저 실행되도록 필터 체인 구성
+                .addFilterBefore(new JwtFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class)
+                .headers(headers -> headers.frameOptions(frame -> frame.disable())
                 );
+
         return http.build();
+
     }
 }

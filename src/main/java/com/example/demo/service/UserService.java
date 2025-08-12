@@ -6,11 +6,13 @@ import com.example.demo.dto.response.UserJoinResponse;
 import com.example.demo.dto.response.UserLoginResponse;
 import com.example.demo.entity.Role;
 import com.example.demo.entity.User;
+import com.example.demo.exception.CustomException;
 import com.example.demo.jwt.JwtUtil;
 import com.example.demo.kafka.UserKafkaProducer;
 import com.example.demo.repository.UserRepository;
 import io.jsonwebtoken.Jwts;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -21,7 +23,7 @@ import java.util.Date;
 public class UserService {
     private final UserRepository userRepository; // DB와 통신하기 위한 JPA 인터페이스
     private final JwtUtil jwtUtil; // JWT 토큰을 생성 / 검증하기 위한 유틸 클래스
-    private final UserKafkaProducer userKafkaProducer;
+    private final UserKafkaProducer userKafkaProducer; // 카프카 프로듀서 주입
     private final PasswordEncoder passwordEncoder;
 
     public UserJoinResponse register(UserJoinRequest request) {
@@ -30,44 +32,42 @@ public class UserService {
             throw new IllegalArgumentException("이미 존재하는 아이디입니다.");
         }
         // 비밀번호 암호화
-        String encodedPassword = passwordEncoder.encode(request.getPassword());
 
         // [2] User 엔티티 객체 생성 (Builder 패턴)
         User user = User.builder()
                 .userId(request.getUserId())
-                .password(request.getPassword())
+                .password(passwordEncoder.encode(request.getPassword()))
                 .name(request.getName())
                 .address(request.getAddress())
-                .role(Role.USER) // 기본 권한 부여
+                .role(request.getRole()) // 역할 반영
                 .build();
         // [3] DB에 저장
         userRepository.save(user);
 
         // Kafka 이벤트 전송
-        userKafkaProducer.sendUserCreateMessage("New user registered: " + user.getUserId());
+        userKafkaProducer.send("user-joined", user.getUserId()); // Kafka에 가입 메세지 전송
 
         // [4] 저장된 유저 정보를 응답 DTO로 반환
         return new UserJoinResponse(
                 user.getId(), // 자동 생성된 DB ID
                 user.getUserId(), // 사용자 ID
-                user.getName() // 사용자 이름
+                user.getName(), // 사용자 이름
+                user.getRole()
         );
     }
 
-    public UserLoginResponse login(UserLoginRequest request) {
+    public String login(String userId, String password) {
 
-        // [1] 아이디로 유저 조회 (없으면 예외 발생)
-        User user = userRepository.findByUserId(request.getUserId())
-                .orElseThrow(()-> new IllegalArgumentException("아이디가 존재하지 않습니다."));
+        // 사용자 존재 여부 확인
+        User user = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new CustomException("아이디가 존재하지 않습니다.", HttpStatus.NOT_FOUND.value()));
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new IllegalArgumentException("비밀번호가 틀렸습니다.");
+        if (!passwordEncoder.matches(password, user.getPassword())) {
+            throw new CustomException("비밀번호가 일치하지 않습니다.", HttpStatus.UNAUTHORIZED.value());
         }
-        //[3] JWT 토큰 생성
-        // jwtUtil.createToken() 메서드를 통해 사용자 ID 기반의 토큰을 만듦
-        String token = jwtUtil.createToken(user.getUserId(), user.getRole());
 
-        // [4] 로그인 응답 객체 생성 후 반환
-        return new UserLoginResponse(token);
+        userKafkaProducer.send("user-logged-in", user.getUserId()); // Kafka에 로그인 성공 메세지 전송
+
+        return jwtUtil.generateToken(user.getUserId(), user.getRole());  // 로그인 성공 시 JWT 토큰 반환
     }
 }

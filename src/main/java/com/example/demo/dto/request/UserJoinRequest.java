@@ -1,5 +1,6 @@
 package com.example.demo.dto.request;
 
+import com.example.demo.entity.Role;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,4 +14,5 @@ public class UserJoinRequest {
     private String password;
     private String name;
     private String address;
+    private Role role;
 }

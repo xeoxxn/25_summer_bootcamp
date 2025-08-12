@@ -9,7 +9,8 @@ import org.springframework.stereotype.Component;
 public class UserKafkaProducer {
     private final KafkaTemplate<String, String> kafkaTemplate;
 
-    public void sendUserCreateMessage(String message) {
-        kafkaTemplate.send("user-topic", message); // "user-topic"은 Kafka 토픽 이용
+    public void send(String topic, String message) {
+        kafkaTemplate.send(topic, message);
     }
+
 }

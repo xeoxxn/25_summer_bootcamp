@@ -1,5 +1,6 @@
 package com.example.demo.dto.response;
 
+import com.example.demo.entity.Role;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -10,4 +11,5 @@ public class UserJoinResponse {
     private Long id;
     private String userId;
     private String name;
+    private Role role;
 }

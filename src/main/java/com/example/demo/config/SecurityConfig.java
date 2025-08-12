@@ -30,7 +30,6 @@ public class SecurityConfig { // 애플리케이션 시작 시 단 한 번 실�
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
-
     }
 
     @Bean

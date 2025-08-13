@@ -62,37 +62,3 @@
 }
 ]
 ```
-3. 깃허브 Access-Token 준비
-
-https://github.com/settings/apps 경로로 들어가서
-
-
-
-
-위와 같은 순서로 진행한 후 Generate token 버튼을 클릭해 주면 토큰이 발급된다
-
-이렇게 토큰 발급이 되었다면 모든 준비는 끝났다.
-
-
-먼저 위와 같이 labels.json 파일을 저장해 놓은 위치로 이동한 후
-아래 명령어를 입력해서 라벨을 업데이트하면 된다.
-npx github-label-sync --access-token {본인의 token} --labels ./labels.json {라벨을 업데이트하고 싶은 본인의 레포지터리}
-ex)
-
-npx github-label-sync --access-token ghp_5Ys79l8dasljdklasjd --labels ./labels.json dobiTistroy/good
-위의 과정대로만 잘 진행하였다면 아래와 같이 lables에 issue, pull Request에 추가된 걸 볼 수 있다.
-
-
-
-4
-
-
-저작자표시
-dobi
-도비의 Back-end 개발일기
-dobi 님의 블로그입니다.
-
-구독하기
-이름
-암호
-댓글쓰기

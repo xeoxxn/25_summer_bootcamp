@@ -8,8 +8,8 @@ import org.springframework.web.bind.annotation.*;
 public class AdminController {
 
     @GetMapping("/dashboard")
-    @PreAuthorize("hasRole('ADMIN')")
-    public String adminOnlyPage() {
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    public String getAdminDashboard() {
         return "관리자만 접근 가능!";
     }
 }
